@@ -1098,6 +1098,7 @@ void blk_requeue_request(struct request_queue *q, struct request *rq)
 }
 EXPORT_SYMBOL(blk_requeue_request);
 
+
 /**
  * blk_reinsert_request() - Insert a request back to the scheduler
  * @q:		request queue
@@ -1121,16 +1122,6 @@ int blk_reinsert_request(struct request_queue *q, struct request *rq)
 		blk_queue_end_tag(q, rq);
 
 	BUG_ON(blk_queued_rq(rq));
-	if (rq->cmd_flags & REQ_URGENT) {
-		/*
-		 * It's not compliant with the design to re-insert
-		 * urgent requests. We want to be able to track this
-		 * down.
-		 */
-		pr_debug("%s(): reinserting an URGENT request", __func__);
-		WARN_ON(!q->dispatched_urgent);
-		q->dispatched_urgent = false;
-	}
 
 	return elv_reinsert_request(q, rq);
 }
