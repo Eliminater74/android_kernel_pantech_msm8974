@@ -268,6 +268,19 @@ static int mdss_mdp_rotator_queue_sub(struct mdss_mdp_rotator_session *rot,
 	}
 
 	if (rot->params_changed || rot_ctl->mdata->mixer_switched) {
+		rot->params_changed = 0;
+		rot_pipe->flags = rot->flags;
+		rot_pipe->src_fmt = mdss_mdp_get_format_params(rot->format);
+		rot_pipe->img_width = rot->img_width;
+		rot_pipe->img_height = rot->img_height;
+		rot_pipe->src = rot->src_rect;
+		rot_pipe->dst = rot->src_rect;
+		rot_pipe->dst.x = 0;
+		rot_pipe->dst.y = 0;
+		rot_pipe->params_changed++;
+	}
+
+	if (rot->params_changed || rot_ctl->mdata->mixer_switched) {
 		ret = __mdss_mdp_rotator_to_pipe(rot, rot_pipe);
 		if (ret) {
 			pr_err("rotator session=%x to pipe=%d failed %d\n",
