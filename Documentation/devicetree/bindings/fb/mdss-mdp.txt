@@ -245,7 +245,9 @@ Optional properties:
 				applied in scenarios where panel interface can
 				be more tolerant to memory latency such as
 				command mode panels.
-
+- qcom,mdss-rotator-ot-limit:	Variable to change the rotator ot value dynamically.
+				This value can be tuned to match performance
+				requirements.
 Fudge Factors:			Fudge factors are used to boost demand for
 				resources like bus bandswidth, clk rate etc. to
 				overcome system inefficiencies and avoid any
@@ -265,7 +267,6 @@ Fudge Factors:			Fudge factors are used to boost demand for
 - qcom,mdss-highest-bank-bit: Property to indicate tile format as opposed to usual
 				linear format. The value tells the GPU highest memory
 				 bank bit used.
-
 Optional subnodes:
 Child nodes representing the frame buffer virtual devices.
 
