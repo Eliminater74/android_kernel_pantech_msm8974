@@ -3028,7 +3028,7 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 			pr_err("unable to create vsync timeline\n");
 			goto init_fail;
 	}
-	}
+		}
 	mfd->mdp_sync_pt_data.async_wait_fences = true;
 	rc = sysfs_create_link_nowarn(&dev->kobj,
 			&mdp5_data->mdata->pdev->dev.kobj, "mdp");
