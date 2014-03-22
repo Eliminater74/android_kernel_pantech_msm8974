@@ -185,6 +185,7 @@ static DEFINE_SPINLOCK(reg_spinlock);
 #define WCNSS_USR_CTRL_MSG_START  0x00000000
 #define WCNSS_USR_SERIAL_NUM      (WCNSS_USR_CTRL_MSG_START + 1)
 #define WCNSS_USR_HAS_CAL_DATA    (WCNSS_USR_CTRL_MSG_START + 2)
+#define WCNSS_USR_WLAN_MAC_ADDR   (WCNSS_USR_CTRL_MSG_START + 3)
 
 #define MAC_ADDRESS_STR "%02x:%02x:%02x:%02x:%02x:%02x"
 
@@ -2102,6 +2103,20 @@ void process_usr_ctrl_cmd(u8 *buf, size_t len)
 		pr_err("%s: Invalid command %d\n", __func__, cmd);
 		break;
 	}
+    case WCNSS_USR_WLAN_MAC_ADDR:
+        memcpy(&penv->wlan_nv_macAddr,  &buf[2],
+                        sizeof(penv->wlan_nv_macAddr));
+
+        pr_debug("%s: MAC Addr:" MAC_ADDRESS_STR "\n", __func__,
+                penv->wlan_nv_macAddr[0], penv->wlan_nv_macAddr[1],
+                penv->wlan_nv_macAddr[2], penv->wlan_nv_macAddr[3],
+                penv->wlan_nv_macAddr[4], penv->wlan_nv_macAddr[5]);
+        break;
+
+    default:
+        pr_err("%s: Invalid command %d\n", __func__, cmd);
+        break;
+    }
 }
 
 static ssize_t wcnss_ctrl_write(struct file *fp, const char __user
