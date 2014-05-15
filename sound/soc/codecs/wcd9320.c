@@ -2584,7 +2584,8 @@ static int taiko_codec_enable_lineout(struct snd_soc_dapm_widget *w,
 						 WCD9XXX_CLSH_EVENT_POST_PA);
 		pr_debug("%s: sleeping 3 ms after %s PA turn on\n",
 				__func__, w->name);
-		usleep_range(3000, 3000);
+		/* Wait for CnP time after PA enable */
+		usleep_range(5000, 5100);
 
 #if defined(CONFIG_MACH_MSM8974_EF60S) || defined(CONFIG_MACH_MSM8974_EF61K) || defined(CONFIG_MACH_MSM8974_EF62L)
 		msm8974_vega_Piezo_spk_amp_onoff(1);
@@ -2599,6 +2600,10 @@ static int taiko_codec_enable_lineout(struct snd_soc_dapm_widget *w,
 						 WCD9XXX_CLSH_REQ_DISABLE,
 						 WCD9XXX_CLSH_EVENT_POST_PA);
 		snd_soc_update_bits(codec, lineout_gain_reg, 0x40, 0x00);
+                pr_debug("%s: sleeping 5 ms after %s PA turn off\n",
+                               __func__, w->name);
+                /* Wait for CnP time after PA disable */
+                usleep_range(5000, 5100);
 		break;
 	}
 	return 0;
