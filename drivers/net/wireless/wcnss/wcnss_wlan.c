@@ -1910,27 +1910,33 @@ static DECLARE_RWSEM(wcnss_pm_sem);
 
 static void wcnss_nvbin_dnld(void)
 {
-	int ret = 0;
-	struct nvbin_dnld_req_msg *dnld_req_msg;
-	unsigned short total_fragments = 0;
-	unsigned short count = 0;
-	unsigned short retry_count = 0;
-	unsigned short cur_frag_size = 0;
-	unsigned char *outbuffer = NULL;
-	const void *nv_blob_addr = NULL;
-	unsigned int nv_blob_size = 0;
-	const struct firmware *nv = NULL;
-	struct device *dev = &penv->pdev->dev;
+    int ret = 0;
+    struct nvbin_dnld_req_msg *dnld_req_msg;
+    unsigned short total_fragments = 0;
+    unsigned short count = 0;
+    unsigned short retry_count = 0;
+    unsigned short cur_frag_size = 0;
+    unsigned char *outbuffer = NULL;
+    const void *nv_blob_addr = NULL;
+    unsigned int nv_blob_size = 0;
+    const struct firmware *nv = NULL;
+    struct device *dev = &penv->pdev->dev;
 
-	down_read(&wcnss_pm_sem);
+// 2014.04.11 Add log for crash issue on NV download, CASE Num : 01509265
+    pr_err("wcnss: wcnss_nvbin_dnld \n");
 
-	ret = request_firmware(&nv, NVBIN_FILE, dev);
+    down_read(&wcnss_pm_sem);
 
-	if (ret || !nv || !nv->data || !nv->size) {
-		pr_err("wcnss: %s: request_firmware failed for %s\n",
-			__func__, NVBIN_FILE);
-		goto out;
-	}
+// 2014.04.11 Add log for crash issue on NV download, CASE Num : 01509265
+    pr_err("wcnss: request_firmware \n");
+
+    ret = request_firmware(&nv, NVBIN_FILE, dev);
+
+    if (ret || !nv || !nv->data || !nv->size) {
+        pr_err("wcnss: %s: request_firmware failed for %s(ret = %d)\n",
+            __func__, NVBIN_FILE, ret);
+        goto out;
+    }
 
 	/*
 	 * First 4 bytes in nv blob is validity bitmap.
