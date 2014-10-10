@@ -1036,13 +1036,6 @@ static void wcnss_smd_notify_event(void *data, unsigned int event)
 		schedule_work(&penv->wcnssctrl_rx_work);
 		break;
 
-<<<<<<< HEAD
-	case SMD_EVENT_OPEN:
-		pr_debug("wcnss: opening WCNSS SMD channel :%s",
-				WCNSS_CTRL_CHANNEL);
-		schedule_work(&penv->wcnssctrl_version_work);
-                schedule_work(&penv->wcnss_pm_config_work);
-=======
     case SMD_EVENT_OPEN:
         pr_debug("wcnss: opening WCNSS SMD channel :%s",
                 WCNSS_CTRL_CHANNEL);
@@ -1050,7 +1043,6 @@ static void wcnss_smd_notify_event(void *data, unsigned int event)
         schedule_work(&penv->wcnss_pm_config_work);
         __cancel_delayed_work(&penv->wcnss_pm_qos_del_req);
         schedule_delayed_work(&penv->wcnss_pm_qos_del_req, 0);
->>>>>>> cff0694... wcnss: add pm_qos support to prevent power collapse for BIMC
 
 		break;
 
@@ -1248,6 +1240,14 @@ struct wcnss_wlan_config *wcnss_get_wlan_config(void)
 	return NULL;
 }
 EXPORT_SYMBOL(wcnss_get_wlan_config);
+
+int wcnss_is_hw_pronto_ver3(void)
+{
+	if (penv && penv->pdev)
+		return penv->wlan_config.is_pronto_v3;
+	return 0;
+}
+EXPORT_SYMBOL(wcnss_is_hw_pronto_ver3);
 
 int wcnss_device_ready(void)
 {
@@ -2334,14 +2334,17 @@ wcnss_trigger_config(struct platform_device *pdev)
 	unsigned long wcnss_phys_addr;
 	int size = 0;
 	struct resource *res;
+	int is_pronto_v3;
 	int pil_retry = 0;
 	int has_pronto_hw = of_property_read_bool(pdev->dev.of_node,
 									"qcom,has-pronto-hw");
-
-	if (of_property_read_u32(pdev->dev.of_node,
-			"qcom,wlan-rx-buff-count", &penv->wlan_rx_buff_count)) {
-		penv->wlan_rx_buff_count = WCNSS_DEF_WLAN_RX_BUFF_COUNT;
-	}
+    pr_err("wcnss: wcnss_trigger_config()\n");
+    is_pronto_v3 = of_property_read_bool(pdev->dev.of_node,
+                                                    "qcom,is-pronto-v3");
+    if (of_property_read_u32(pdev->dev.of_node,
+            "qcom,wlan-rx-buff-count", &penv->wlan_rx_buff_count)) {
+        penv->wlan_rx_buff_count = WCNSS_DEF_WLAN_RX_BUFF_COUNT;
+    }
 
 	/* make sure we are only triggered once */
 	if (penv->triggered)
@@ -2360,6 +2363,7 @@ wcnss_trigger_config(struct platform_device *pdev)
 	}
 	penv->wcnss_hw_type = (has_pronto_hw) ? WCNSS_PRONTO_HW : WCNSS_RIVA_HW;
 	penv->wlan_config.use_48mhz_xo = has_48mhz_xo;
+	penv->wlan_config.is_pronto_v3 = is_pronto_v3;
 
 	if (WCNSS_CONFIG_UNSPECIFIED == has_autodetect_xo && has_pronto_hw) {
 		has_autodetect_xo = of_property_read_bool(pdev->dev.of_node,
@@ -2612,14 +2616,9 @@ fail_power:
 	else
 		wcnss_gpios_config(penv->gpios_5wire, false);
 fail_gpio_res:
-<<<<<<< HEAD
-	penv = NULL;
-	return ret;
-=======
     wcnss_disable_pc_remove_req();
     penv = NULL;
     return ret;
->>>>>>> cff0694... wcnss: add pm_qos support to prevent power collapse for BIMC
 }
 
 static int wcnss_node_open(struct inode *inode, struct file *file)
