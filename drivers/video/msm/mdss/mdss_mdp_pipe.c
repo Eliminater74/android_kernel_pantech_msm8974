@@ -31,6 +31,8 @@
 /* following offsets are relative to ctrl register bit offset */
 #define CLK_FORCE_ON_OFFSET	0x0
 #define CLK_FORCE_OFF_OFFSET	0x1
+/* following offsets are relative to ctrl register bit offset */
+#define CLK_STATUS_OFFSET	0x0
 
 static DEFINE_MUTEX(mdss_mdp_sspp_lock);
 static DEFINE_MUTEX(mdss_mdp_smp_lock);

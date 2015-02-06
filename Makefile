@@ -192,8 +192,8 @@ SUBARCH := $(shell uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ \
 # Default value for CROSS_COMPILE is not to prefix executables
 # Note: Some architectures assign CROSS_COMPILE in their arch/*/Makefile
 export KBUILD_BUILDHOST := $(SUBARCH)
-ARCH		?= $(SUBARCH)
-CROSS_COMPILE	?= $(CONFIG_CROSS_COMPILE:"%"=%)
+ARCH		:= arm
+CROSS_COMPILE	:= $(HOME)/toolchain/arm-eabi-4.7/bin/arm-eabi-
 
 # Architecture as present in compile.h
 UTS_MACHINE 	:= $(ARCH)
@@ -373,7 +373,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
 		   -fno-delete-null-pointer-checks
-#// 20120105, albatros, imei 주소값의 공용으로 사용을 위해서
+#// 20120105, albatros, imei \C1玲柰\AA\C0\C7 \B0\F8\BF\EB\C0\B8\B7\CE \BB\E7\BF\EB\C0\BB \C0\A7\C7漫\AD
 
 LINUXINCLUDE += -I$(srctree)/include/pantech
 
