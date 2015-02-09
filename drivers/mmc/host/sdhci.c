@@ -1194,6 +1194,7 @@ static void sdhci_set_clock(struct sdhci_host *host, unsigned int clock)
 	u16 clk = 0;
 	unsigned long timeout;
 	unsigned long flags;
+	u32 tuning_opcode;
 
 	spin_lock_irqsave(&host->lock, flags);
 	if (clock && clock == host->clock)

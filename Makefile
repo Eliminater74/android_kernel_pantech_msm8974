@@ -1,6 +1,6 @@
 VERSION = 3
 PATCHLEVEL = 4
-SUBLEVEL = 0
+SUBLEVEL = 106
 EXTRAVERSION =
 NAME = Saber-toothed Squirrel
 
@@ -596,6 +596,19 @@ endif
 # Use make W=1 to enable this warning (see scripts/Makefile.build)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
 
+# For linux
+KBUILD_CFLAGS += $(call cc-disable-warning, sizeof-pointer-memaccess)
+KBUILD_CFLAGS += $(call cc-disable-warning, maybe-uninitialized)
+KBUILD_CFLAGS += $(call cc-disable-warning, unused-variable)
+KBUILD_CFLAGS += $(call cc-disable-warning, declaration-after-statement)
+KBUILD_CFLAGS += $(call cc-disable-warning, unused-label)
+KBUILD_CFLAGS += $(call cc-disable-warning, unused-function)
+KBUILD_CFLAGS += $(call cc-disable-warning, discarded-qualifiers)
+KBUILD_CFLAGS += $(call cc-disable-warning, deprecated-declarations)
+KBUILD_CFLAGS += $(call cc-disable-warning, undef)
+KBUILD_CFLAGS += $(call cc-disable-warning, uninitialized)
+KBUILD_CFLAGS += $(call cc-disable-warning, sequence-point)
+
 ifdef CONFIG_FRAME_POINTER
 KBUILD_CFLAGS	+= -fno-omit-frame-pointer -fno-optimize-sibling-calls
 else
@@ -608,6 +621,8 @@ ifndef CONFIG_FUNCTION_TRACER
 KBUILD_CFLAGS	+= -fomit-frame-pointer
 endif
 endif
+
+KBUILD_CFLAGS   += $(call cc-option, -fno-var-tracking-assignments)
 
 ifdef CONFIG_DEBUG_INFO
 KBUILD_CFLAGS	+= -g
