@@ -51,7 +51,10 @@ struct qpnp_vib {
 	u16 base;
 	int state;
 	int vtg_level;
+	int vtg_level_normal;
+	int vtg_level_haptic;
 	int timeout;
+	int haptic_threshold;
 	struct mutex lock;
 };
 #ifdef VIBRATOR_PANTECH_PATCH
