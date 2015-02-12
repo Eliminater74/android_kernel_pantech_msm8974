@@ -178,7 +178,6 @@ static int mdss_mdp_rotator_pipe_dequeue(struct mdss_mdp_rotator_session *rot)
 					       head);
 
 			rc = mdss_mdp_rotator_busy_wait(tmp);
-			mdss_mdp_smp_release(tmp->pipe);
 			list_del(&tmp->head);
 			if (rc) {
 				pr_err("no pipe attached to session=%d\n",
@@ -439,7 +438,6 @@ int mdss_mdp_rotator_setup(struct msm_fb_data_type *mfd,
 	struct mdss_mdp_rotator_session *rot = NULL;
 	struct mdss_mdp_format_params *fmt;
 	u32 bwc_enabled;
-	bool format_changed = false;
 	int ret = 0;
 
 	mutex_lock(&rotator_lock);
@@ -473,10 +471,6 @@ int mdss_mdp_rotator_setup(struct msm_fb_data_type *mfd,
 			ret = -ENODEV;
 			goto rot_err;
 		}
-
-		if (rot->format != fmt->format)
-			format_changed = true;
-
 	} else {
 		pr_err("invalid rotator session id=%x\n", req->id);
 		ret = -EINVAL;
@@ -596,12 +590,6 @@ int mdss_mdp_rotator_setup(struct msm_fb_data_type *mfd,
 
 	rot->params_changed++;
 
-	/* If the format changed, release the smp alloc */
-	if (format_changed && rot->pipe) {
-		mdss_mdp_rotator_busy_wait(rot);
-		mdss_mdp_smp_release(rot->pipe);
-	}
-
 	ret = __mdss_mdp_rotator_pipe_reserve(rot);
 	if (!ret && rot->next)
 		ret = __mdss_mdp_rotator_pipe_reserve(rot->next);
@@ -623,7 +611,7 @@ int mdss_mdp_rotator_setup(struct msm_fb_data_type *mfd,
 	 * user is expected to proivde the original src format
 	 */
 	req->src.format = mdss_mdp_get_rotator_dst_format(req->src.format,
-		req->flags & MDP_ROT_90);
+		req->flags & MDP_ROT_90, req->flags & MDP_BWC_EN);
 
 	mutex_unlock(&rotator_lock);
 	return ret;
@@ -662,7 +650,7 @@ static int mdss_mdp_rotator_finish(struct mdss_mdp_rotator_session *rot)
 
 	if (rot_pipe) {
 		struct mdss_mdp_mixer *mixer = rot_pipe->mixer;
-		mdss_mdp_pipe_destroy(rot_pipe);
+		mdss_mdp_pipe_unmap(rot_pipe);
 		tmp = mdss_mdp_ctl_mixer_switch(mixer->ctl,
 				MDSS_MDP_WB_CTL_TYPE_BLOCK);
 		if (!tmp)
@@ -729,6 +717,9 @@ int mdss_mdp_rotator_play(struct msm_fb_data_type *mfd,
 		pr_err("rotator busy wait error\n");
 		goto dst_buf_fail;
 	}
+
+	if (!mfd->panel_info->cont_splash_enabled)
+		mdss_iommu_attach(mdp5_data->mdata);
 
 	if (!mfd->panel_info->cont_splash_enabled)
 		mdss_iommu_attach(mdp5_data->mdata);
