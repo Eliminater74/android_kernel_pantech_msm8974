@@ -26,19 +26,14 @@
 #define QPNP_VIB_VTG_CTL(base)		(base + 0x41)
 #define QPNP_VIB_EN_CTL(base)		(base + 0x46)
 
-#define QPNP_VIB_MAX_LEVEL		31
-#define QPNP_VIB_MIN_LEVEL		12
-
 #define QPNP_VIB_DEFAULT_TIMEOUT	15000
 #define QPNP_VIB_DEFAULT_VTG_LVL	3100
+#define QPNP_VIB_DEFAULT_VTG_MAX	3100
+#define QPNP_VIB_DEFAULT_VTG_MIN	1200
 
 #define QPNP_VIB_EN			BIT(7)
 #define QPNP_VIB_VTG_SET_MASK		0x1F
 #define QPNP_VIB_LOGIC_SHIFT		4
-
-static int debug_vib=0;
-
-#define dbg(fmt, args...)   if(debug_vib)printk("[VIB] " fmt, ##args)
 
 struct qpnp_vib {
 	struct spmi_device *spmi;
@@ -50,29 +45,36 @@ struct qpnp_vib {
 	u8  reg_en_ctl;
 	u16 base;
 	int state;
+	int vtg_min;
+	int vtg_max;
 	int vtg_level;
-	int vtg_level_normal;
-	int vtg_level_haptic;
 	int timeout;
-	int haptic_threshold;
-	struct mutex lock;
+	spinlock_t lock;
 };
-#ifdef VIBRATOR_PANTECH_PATCH
-void pantech_vib_debug_enable(void);
-void pantech_vib_debug_disable(void);
-void pantech_vib_debug_enable(void){
-  printk("[VIB] Debug_vib enable is called\n");
-  debug_vib=1;
-  return;
-}
-void pantech_vib_debug_disable(void){
-  printk("[VIB] Debug_vib disable is called\n");
-  debug_vib=0;
-  return;
-}
-#endif
 
 static struct qpnp_vib *vib_dev;
+
+static ssize_t qpnp_vib_min_show(struct device *dev,
+                                        struct device_attribute *attr,
+                                        char *buf)
+{
+        struct timed_output_dev *tdev = dev_get_drvdata(dev);
+        struct qpnp_vib *vib = container_of(tdev, struct qpnp_vib,
+                                         timed_dev);
+
+        return scnprintf(buf, PAGE_SIZE, "%d\n", vib->vtg_min);
+}
+
+static ssize_t qpnp_vib_max_show(struct device *dev,
+                                        struct device_attribute *attr,
+                                        char *buf)
+{
+        struct timed_output_dev *tdev = dev_get_drvdata(dev);
+        struct qpnp_vib *vib = container_of(tdev, struct qpnp_vib,
+                                         timed_dev);
+
+        return scnprintf(buf, PAGE_SIZE, "%d\n", vib->vtg_max);
+}
 
 static ssize_t qpnp_vib_level_show(struct device *dev,
                                         struct device_attribute *attr,
@@ -82,7 +84,7 @@ static ssize_t qpnp_vib_level_show(struct device *dev,
         struct qpnp_vib *vib = container_of(tdev, struct qpnp_vib,
                                          timed_dev);
 
-        return scnprintf(buf, PAGE_SIZE, "%d\n", vib->vtg_level_normal);
+        return scnprintf(buf, PAGE_SIZE, "%d\n", vib->vtg_level);
 }
 
 
@@ -102,20 +104,22 @@ static ssize_t qpnp_vib_level_store(struct device *dev,
                 return -EINVAL;
         }
 
-        if (val < QPNP_VIB_MIN_LEVEL) {
-                pr_err("%s: level %d not in range (%d - %d), using min.", __func__, val, QPNP_VIB_MIN_LEVEL, QPNP_VIB_MAX_LEVEL);
-                val = QPNP_VIB_MIN_LEVEL;
-        } else if (val > QPNP_VIB_MAX_LEVEL) {
-                pr_err("%s: level %d not in range (%d - %d), using max.", __func__, val, QPNP_VIB_MIN_LEVEL, QPNP_VIB_MAX_LEVEL);
-                val = QPNP_VIB_MAX_LEVEL;
+        if (val < vib->vtg_min) {
+                pr_err("%s: level %d not in range (%d - %d), using min.", __func__, val, vib->vtg_min, vib->vtg_max);
+                val = vib->vtg_min;
+        } else if (val > vib->vtg_max) {
+                pr_err("%s: level %d not in range (%d - %d), using max.", __func__, val, vib->vtg_min, vib->vtg_max);
+                val = vib->vtg_max;
         }
 
-        vib->vtg_level_normal = val;
+        vib->vtg_level = val;
 
         return strnlen(buf, count);
 }
 
 static DEVICE_ATTR(vtg_level, S_IRUGO | S_IWUSR, qpnp_vib_level_show, qpnp_vib_level_store);
+static DEVICE_ATTR(vtg_min, S_IRUGO, qpnp_vib_min_show, NULL);
+static DEVICE_ATTR(vtg_max, S_IRUGO, qpnp_vib_max_show, NULL);
 
 static int qpnp_vib_read_u8(struct qpnp_vib *vib, u8 *data, u16 reg)
 {
@@ -155,8 +159,8 @@ int qpnp_vibrator_config(struct qpnp_vib_config *vib_cfg)
 
 	level = vib_cfg->drive_mV / 100;
 	if (level) {
-		if ((level < QPNP_VIB_MIN_LEVEL) ||
-				(level > QPNP_VIB_MAX_LEVEL)) {
+		if ((level < vib_dev->vtg_min) ||
+				(level > vib_dev->vtg_max)) {
 			dev_err(&vib_dev->spmi->dev, "Invalid voltage level\n");
 			return -EINVAL;
 		}
@@ -194,35 +198,9 @@ static int qpnp_vib_set(struct qpnp_vib *vib, int on)
 {
 	int rc;
 	u8 val;
-#ifdef VIBRATOR_PANTECH_PATCH  
+
 	if (on) {
 		val = vib->reg_vtg_ctl;
-		dbg("[VIB] ON -> %d, vib->reg_vtg_ctl -> %d, vib->vtg_level -> %d \n",on,val,vib->vtg_level);
-		val &= ~QPNP_VIB_VTG_SET_MASK;
-		val |= (vib->vtg_level & QPNP_VIB_VTG_SET_MASK);
-		val=on;
-		rc = qpnp_vib_write_u8(vib, &val, QPNP_VIB_VTG_CTL(vib->base));
-		if (rc < 0)
-			return rc;
-		vib->reg_vtg_ctl = val;
-		val = vib->reg_en_ctl;
-		val |= QPNP_VIB_EN;
-		rc = qpnp_vib_write_u8(vib, &val, QPNP_VIB_EN_CTL(vib->base));
-		if (rc < 0)
-			return rc;
-		vib->reg_en_ctl = val;
-	} else {
-		val = vib->reg_en_ctl;
-		val &= ~QPNP_VIB_EN;
-		dbg("[VIB] OFF -> %d, vib->reg_vtg_ctl -> %d \n",on,val);
-		rc = qpnp_vib_write_u8(vib, &val, QPNP_VIB_EN_CTL(vib->base));
-		if (rc < 0)
-			return rc;
-		vib->reg_en_ctl = val;
-	}
-#else
-if (on) {
-		val = vib->reg_vtg_ctl;
 		val &= ~QPNP_VIB_VTG_SET_MASK;
 		val |= (vib->vtg_level & QPNP_VIB_VTG_SET_MASK);
 		rc = qpnp_vib_write_u8(vib, &val, QPNP_VIB_VTG_CTL(vib->base));
@@ -243,8 +221,6 @@ if (on) {
 			return rc;
 		vib->reg_en_ctl = val;
 	}
-
-#endif
 
 	return rc;
 }
@@ -253,29 +229,16 @@ static void qpnp_vib_enable(struct timed_output_dev *dev, int value)
 {
 	struct qpnp_vib *vib = container_of(dev, struct qpnp_vib,
 					 timed_dev);
-#ifdef VIBRATOR_PANTECH_PATCH
-  int vib_strength = ((value & 0xFFFF0000) >> 16) ;
-  int vib_timeout = (value & 0x0000FFFF);
-  dbg("[VIB] vib_strength ->%d, vib_timeout -> %d\n",vib_strength,vib_timeout);
-#endif
+	unsigned long flags;
 
-	mutex_lock(&vib->lock);
-	hrtimer_cancel(&vib->vib_timer);
-#ifdef VIBRATOR_PANTECH_PATCH
-  if (vib_strength == 0)
-		vib->state = 0;
-	else {
-		vib_timeout = (vib_timeout > vib->timeout ?
-				 0x7FFFFFFF : vib_timeout);
-	  if(vib_strength > 31) vib_strength = 31;
-		//vib->state = ((vib_strength*70)/100) + 6 + 11;
-		vib->state = vib_strength;
-		hrtimer_start(&vib->vib_timer,
-			      ktime_set(vib_timeout / 1000, (vib_timeout % 1000) * 1000000),
-			      HRTIMER_MODE_REL);
+retry:
+	spin_lock_irqsave(&vib->lock, flags);
+	if (hrtimer_try_to_cancel(&vib->vib_timer) < 0) {
+		spin_unlock_irqrestore(&vib->lock, flags);
+		cpu_relax();
+		goto retry;
 	}
 
-#else
 	if (value == 0)
 		vib->state = 0;
 	else {
@@ -286,13 +249,9 @@ static void qpnp_vib_enable(struct timed_output_dev *dev, int value)
 			      ktime_set(value / 1000, (value % 1000) * 1000000),
 			      HRTIMER_MODE_REL);
 	}
-#endif
-	mutex_unlock(&vib->lock);
-#ifdef VIBRATOR_PANTECH_PATCH
-  qpnp_vib_set(vib, vib->state);
-#else
-	schedule_work(&vib->work);
-#endif
+	qpnp_vib_set(vib, vib->state);
+
+	spin_unlock_irqrestore(&vib->lock, flags);
 }
 
 static void qpnp_vib_update(struct work_struct *work)
@@ -318,9 +277,14 @@ static enum hrtimer_restart qpnp_vib_timer_func(struct hrtimer *timer)
 {
 	struct qpnp_vib *vib = container_of(timer, struct qpnp_vib,
 							 vib_timer);
+	unsigned long flags;
+
+	spin_lock_irqsave(&vib->lock, flags);
 
 	vib->state = 0;
-	schedule_work(&vib->work);
+	qpnp_vib_set(vib, vib->state);
+
+	spin_unlock_irqrestore(&vib->lock, flags);
 
 	return HRTIMER_NORESTART;
 }
@@ -375,7 +339,29 @@ static int __devinit qpnp_vibrator_probe(struct spmi_device *spmi)
 		return rc;
 	}
 
+	vib->vtg_max = QPNP_VIB_DEFAULT_VTG_MAX;
+	rc = of_property_read_u32(spmi->dev.of_node,
+			"qcom,vib-vtg-max-mV", &temp_val);
+	if (!rc) {
+		vib->vtg_max = min(temp_val, (u32)QPNP_VIB_DEFAULT_VTG_MAX);
+	} else if (rc != -EINVAL) {
+		dev_err(&spmi->dev, "Unable to read vtg max level\n");
+		return rc;
+	}
+
+	vib->vtg_min = QPNP_VIB_DEFAULT_VTG_MIN;
+	rc = of_property_read_u32(spmi->dev.of_node,
+			"qcom,vib-vtg-min-mV", &temp_val);
+	if (!rc) {
+		vib->vtg_min = max(temp_val, (u32)QPNP_VIB_DEFAULT_VTG_MIN);
+	} else if (rc != -EINVAL) {
+		dev_err(&spmi->dev, "Unable to read vtg min level\n");
+		return rc;
+	}
+
 	vib->vtg_level /= 100;
+	vib->vtg_min /= 100;
+	vib->vtg_max /= 100;
 
 	vib_resource = spmi_get_resource(spmi, 0, IORESOURCE_MEM, 0);
 	if (!vib_resource) {
@@ -395,7 +381,7 @@ static int __devinit qpnp_vibrator_probe(struct spmi_device *spmi)
 		return rc;
 	vib->reg_en_ctl = val;
 
-	mutex_init(&vib->lock);
+	spin_lock_init(&vib->lock);
 	INIT_WORK(&vib->work, qpnp_vib_update);
 
 	hrtimer_init(&vib->vib_timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
@@ -411,7 +397,9 @@ static int __devinit qpnp_vibrator_probe(struct spmi_device *spmi)
 	if (rc < 0)
 		return rc;
 
-        device_create_file(vib->timed_dev.dev, &dev_attr_vtg_level);
+		device_create_file(vib->timed_dev.dev, &dev_attr_vtg_level);
+		device_create_file(vib->timed_dev.dev, &dev_attr_vtg_min);
+		device_create_file(vib->timed_dev.dev, &dev_attr_vtg_max);
 
 	vib_dev = vib;
 
@@ -425,7 +413,6 @@ static int  __devexit qpnp_vibrator_remove(struct spmi_device *spmi)
 	cancel_work_sync(&vib->work);
 	hrtimer_cancel(&vib->vib_timer);
 	timed_output_dev_unregister(&vib->timed_dev);
-	mutex_destroy(&vib->lock);
 
 	return 0;
 }
