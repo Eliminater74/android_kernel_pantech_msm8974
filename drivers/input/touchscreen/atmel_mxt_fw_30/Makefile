@@ -2,7 +2,8 @@
 # Makefile for the MSM8974 Atmel mXT540S TOUCH drivers.
 #
 
-obj-$(CONFIG_TOUCHSCREEN_ATMEL_MXT_FW30) += atmel_mxt_fw30_legacy.o
+# Just mistake
+obj-$(CONFIG_TOUCHSCREEN_ATMEL_MXT_FW30) += atmel_mxt_fw30.o
 
 #obj-m := atmel_mxt_fw30.o
 
