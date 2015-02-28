@@ -38,6 +38,7 @@ static int pan_debug_state = PAN_TOUCH_DEBUG_OPERATION_ERR_MASK;
 #define dbg_config(fmt,args...)   if(pan_debug_state & PAN_TOUCH_DEBUG_CONFIG_MASK) printk("[+++ TOUCH] " fmt,##args);
 #define dbg_touch(fmt,args...)    if(pan_debug_state & (PAN_TOUCH_DEBUG_TOUCH_MASK|PAN_TOUCH_DEBUG_OPERATION_MASK)) printk("[+++ TOUCH] " fmt,##args);
 
+#define PAN_TOUCH_DETECT_GHOST 
 
 
 /* -------------------------------------------------------------------- */
@@ -95,10 +96,6 @@ static int pan_debug_state = PAN_TOUCH_DEBUG_OPERATION_ERR_MASK;
 	#define PAN_TOUCH_CAL_COMMON
 	#define PAN_TOUCH_CAL_PMODE
   //-- p11309
-
-  	#if defined(CONFIG_MACH_MSM8974_EF65S)
-	  	#define PAN_TOUCH_DETECT_GHOST	// p13250  
-  	#endif
 
 #elif defined(CONFIG_MACH_MSM8974_EF60S) || defined(CONFIG_MACH_MSM8974_EF61K) || defined(CONFIG_MACH_MSM8974_EF62L)
 	#define PAN_T15_KEYARRAY_ENABLE

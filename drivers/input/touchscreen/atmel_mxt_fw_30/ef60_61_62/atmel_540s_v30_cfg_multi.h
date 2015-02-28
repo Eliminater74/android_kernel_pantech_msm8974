@@ -1,5 +1,5 @@
 
-#include "../atmel_mxt_fw30_legacy.h"
+#include "../atmel_mxt_fw30.h"
 #include <linux/switch.h>
 
 /* -------------------------------------------------------------------- */
