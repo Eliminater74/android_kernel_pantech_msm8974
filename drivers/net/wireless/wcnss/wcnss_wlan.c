@@ -1130,6 +1130,14 @@ struct wcnss_wlan_config *wcnss_get_wlan_config(void)
 }
 EXPORT_SYMBOL(wcnss_get_wlan_config);
 
+int wcnss_is_hw_pronto_ver3(void)
+{
+	if (penv && penv->pdev)
+		return penv->wlan_config.is_pronto_v3;
+	return 0;
+}
+EXPORT_SYMBOL(wcnss_is_hw_pronto_ver3);
+
 int wcnss_device_ready(void)
 {
 	if (penv && penv->pdev && penv->nv_downloaded &&
