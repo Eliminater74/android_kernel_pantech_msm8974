@@ -202,6 +202,13 @@ static int __mxt_write_reg(struct i2c_client *client, u16 reg, u16 len,const voi
 
 static DEVICE_ATTR(debug_enable, S_IWUSR | S_IRUSR, mxt_debug_enable_show,mxt_debug_enable_store);
 
+#ifdef VIBRATOR_PANTECH_PATCH
+// pantech vib driver debug enable/disable function 
+extern void pantech_vib_debug_enable(void);
+extern void pantech_vib_debug_disable(void);
+#endif
+
+
 //++ p11309 - 2013.05.14 for gold reference T66, add 2013.05.26 for stabilization & dual x
 #define PAN_GLD_REF_STATUS_IDLE				0x00
 #define PAN_GLD_REF_STATUS_BAD_DATA			0x01
@@ -1205,6 +1212,18 @@ static ssize_t write(struct file *file, const char *buf, size_t count, loff_t *p
 				printk("[TOUCH] sysfs_chmod_file is failed\n");		
 			i=sysfs_chmod_file(&mxt_fw30_data->client->dev.kobj,&(*mxt_attrs[0]), S_IWUSR | S_IRUSR);
 		}
+
+#ifdef VIBRATOR_PANTECH_PATCH
+
+		if(strncmp(buf, "vibon", 5)==0)
+		{
+		  pantech_vib_debug_enable();
+		}
+		if(strncmp(buf, "viboff", 6)==0)
+		{
+		  pantech_vib_debug_disable();
+		}
+#endif
 		if(strncmp(buf, "touchid", 7)==0)
 		{	
 			j=0;
