@@ -1,3 +1,3 @@
-make -j4 cyanogenmod_ef56s_defconfig
+make -j16 cyanogenmod_ef56s_defconfig
 
-make -j4
+make -j16
