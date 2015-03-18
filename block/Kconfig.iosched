@@ -104,7 +104,6 @@ config CGROUP_BFQIO
 	  Enable hierarchical scheduling in BFQ, using the cgroups
 	  filesystem interface.  The name of the subsystem will be
 	  bfqio.
->>>>>>> aeb79a8... block: cgroups, kconfig, build bits for BFQ-v6-3.4
 
 choice
 	prompt "Default I/O scheduler"
@@ -129,16 +128,14 @@ choice
 	config DEFAULT_CFQ
 		bool "CFQ" if IOSCHED_CFQ=y
 
-<<<<<<< HEAD
 	config DEFAULT_FIOPS
 		bool "FIOPS" if IOSCHED_FIOPS=y
 
 	config DEFAULT_SIO
 		bool "SIO" if IOSCHED_SIO=y
-=======
+
 	config DEFAULT_BFQ
 		bool "BFQ" if IOSCHED_BFQ=y
->>>>>>> aeb79a8... block: cgroups, kconfig, build bits for BFQ-v6-3.4
 
 	config DEFAULT_NOOP
 		bool "No-op"
@@ -150,12 +147,9 @@ config DEFAULT_IOSCHED
 	default "deadline" if DEFAULT_DEADLINE
 	default "row" if DEFAULT_ROW
 	default "cfq" if DEFAULT_CFQ
-<<<<<<< HEAD
 	default "fiops" if DEFAULT_FIOPS
 	default "sio" if DEFAULT_SIO
-=======
 	default "bfq" if DEFAULT_BFQ
->>>>>>> aeb79a8... block: cgroups, kconfig, build bits for BFQ-v6-3.4
 	default "noop" if DEFAULT_NOOP
 
 endmenu
