@@ -337,6 +337,11 @@ struct mxt_fw30_data_t
 #ifdef PAN_TOUCH_PEN_DETECT
   int pan_touch_pen_state;
 #endif
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+  struct early_suspend early_suspend;
+#endif
+
 };
 
 #ifdef TOUCH_MONITOR

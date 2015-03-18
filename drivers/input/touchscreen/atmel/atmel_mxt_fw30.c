@@ -58,12 +58,20 @@
 #include <mach/msm_smsm.h>
 #endif
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+#include <linux/earlysuspend.h>
+#endif
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void mxt_early_suspend(struct early_suspend *es);
+static void mxt_late_resume(struct early_suspend *es);
+#endif
 
 /* -------------------------------------------------------------------- */
 /* function proto type & variable for driver							*/
 /* -------------------------------------------------------------------- */
-static int __devinit mxt_probe(struct i2c_client *client, const struct i2c_device_id *id);
-static int __devexit mxt_remove(struct i2c_client *client);
+static int mxt_probe(struct i2c_client *client, const struct i2c_device_id *id);
+static int mxt_remove(struct i2c_client *client);
 static int mxt_resume(struct i2c_client *client);
 static int mxt_suspend(struct i2c_client *client, pm_message_t mesg);
 #ifdef MXT_FIRMUP_ENABLE
@@ -307,7 +315,7 @@ static struct i2c_driver mxt_fw30_driver = {
 		.of_match_table = mxt_match_table,
 	},
 	.probe		= mxt_probe,
-	.remove		= __devexit_p(mxt_remove),
+	.remove		= mxt_remove,
 	.id_table	= mxt_fw30_id,
 };
 
@@ -4982,6 +4990,10 @@ static int mxt_remove(struct i2c_client *client)
 {
 	dbg_func_in();
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+        unregister_early_suspend(&data->early_suspend);
+#endif
+
 	input_mt_destroy_slots(mxt_fw30_data->input_dev); // PROTOCOL TYPE B
 	if(mxt_fw30_data->client->irq)
 	{
@@ -5100,8 +5112,25 @@ static int mxt_resume(struct i2c_client *client)
 	return 0;
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
+static void mxt_early_suspend(struct early_suspend *es)
+{
+        struct mxt_data *mxt;
+        mxt = container_of(es, struct mxt_data, early_suspend);
+        if (mxt_suspend(&mxt->client->dev) != 0)
+        dev_err(&mxt->client->dev, "%s: failed\n", __func__);
+}
+static void mxt_late_resume(struct early_suspend *es)
+{
+        struct mxt_data *mxt;
+        mxt = container_of(es, struct mxt_data, early_suspend);
+        if (mxt_resume(&mxt->client->dev) != 0)
+        dev_err(&mxt->client->dev, "%s: failed\n", __func__);
+}
+#endif
+
 /* I2C driver probe function */
-static int __devinit mxt_probe(struct i2c_client *client, const struct i2c_device_id *id)
+static int mxt_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	int rc;
 
@@ -5336,6 +5365,14 @@ static int __devinit mxt_probe(struct i2c_client *client, const struct i2c_devic
 	mxt_fw30_data->state = APPMODE;
 	dbg_hw("Atmel Max Touch Probe Complete!\n");
 	touch_probe_state=1;
+
+
+#ifdef CONFIG_HAS_EARLYSUSPEND
+        data->early_suspend.level = EARLY_SUSPEND_LEVEL_BLANK_SCREEN + 1;
+        data->early_suspend.suspend = mxt_early_suspend;
+        data->early_suspend.resume = mxt_late_resume;
+        register_early_suspend(&data->early_suspend);
+#endif
 	return 0;
 
 err_input_register_device_failed:
